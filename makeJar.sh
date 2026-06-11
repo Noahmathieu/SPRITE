@@ -7,6 +7,9 @@ TOMCAT_LIB="/home/noah/tomcat/lib/servlet-api.jar"
 # On utilise find pour récupérer les fichiers .java dans les sous-dossiers (comme GetServlet/Getlink.java)
 javac -cp "$TOMCAT_LIB" -d bin $(find src -name "*.java")
 
+    # Envoyer le sprite.jar vers /mnt/storage/snapd/S4/Web Dynamique/AppTEST
+    cp sprite.jar /mnt/storage/snapd/S4/Web\ Dynamique/AppTEST/lib
+
 # Si la compilation a réussi
 if [ $? -eq 0 ]; then
     cd bin
