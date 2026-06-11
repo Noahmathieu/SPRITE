@@ -20,11 +20,10 @@ public class Getlink extends HttpServlet {
     }
 
     public void requestController(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String name = request.getParameter("name");
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         out.println("<html><body>");
-        out.println("<h1>Hello, " + name + "!</h1>");
+        out.println("<h1>Hello!</h1>");
         out.println("</body></html>");
     }
 }
