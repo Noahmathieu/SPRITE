@@ -19,7 +19,9 @@ public class Getlink extends HttpServlet {
         requestController(request, response);
     }
 
-    public void requestController(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    public void requestController(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        //String name = request.getParameter("name");
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         out.println("<html><body>");
