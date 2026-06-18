@@ -2,6 +2,9 @@ package GetServlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
+
+import GetServlet.utils.Utilitaire;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,11 +24,23 @@ public class Getlink extends HttpServlet {
 
     public void requestController(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        //String name = request.getParameter("name");
+        String packageName = request.getParameter("package");
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         out.println("<html><body>");
         out.println("<h1>Hello!</h1>");
+        if (packageName == null || packageName.isEmpty()) {
+            out.println("<p>Veuillez fournir un nom de package en paramètre.</p>");
+            out.println("</body></html>");
+            return;
+        } else {
+        Utilitaire utilitaire = new Utilitaire();
+        List<Class<?>> classes = utilitaire.getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName(packageName));
+        
+        for (Class<?> clazz : classes) {
+            out.println("<p>Classe : " + clazz.getSimpleName() + " - Package : " + clazz.getPackage().getName() + "</p>");
+        }
+    }
         out.println("</body></html>");
     }
 }
