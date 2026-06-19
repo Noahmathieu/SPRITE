@@ -1,7 +1,10 @@
 package GetServlet.utils;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.reflections.Reflections;
@@ -9,7 +12,8 @@ import org.reflections.scanners.SubTypesScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
-import GetServlet.annotation.Controller; 
+import GetServlet.annotation.Controller;
+import GetServlet.annotation.UrlMapping;
 
 public class Utilitaire {
 
@@ -50,5 +54,54 @@ public class Utilitaire {
             }
         }
         return listClasses;
+    }
+
+    // public List<Class<?>> getClassesWithAnnotationUrlMapping(List<Class<?>> listClasse) {
+    //     List<Class<?>> listClasses = new ArrayList<>();
+    //     for (Class<?> clazz : listClasse) {
+    //         if (clazz.isAnnotationPresent(UrlMapping.class)) {
+    //             listClasses.add(clazz);
+    //         }
+    //     }
+    //     return listClasses;
+    // }
+
+    public Map<String, String> getUrlMappingClasses(List<Class<?>> listClasseWithAnnotation, String urlMap) {
+        Map<String, String> urlMappingClasses = new HashMap<>();
+        for (Class<?> clazz : listClasseWithAnnotation) {
+            Method[] methods = clazz.getDeclaredMethods();
+
+            for (Method method : methods) {
+                UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
+                String url = urlMapping.value();
+                if (url.equals(urlMap)) {
+                    urlMappingClasses.put("url", url);
+                    urlMappingClasses.put("class", clazz.getSimpleName());
+                    urlMappingClasses.put("method", method.getName());
+                }
+            }
+
+        }
+        return urlMappingClasses;
+    }
+    
+    public List<Map<String, String>> getUrlMappingNoMatchesUrl(List<Class<?>> listClasseWithAnnotation) {
+        List<Map<String, String>> urlMappingClassesList = new ArrayList<>();
+        for (Class<?> clazz : listClasseWithAnnotation) {
+            Method[] methods = clazz.getDeclaredMethods();
+            
+            for (Method method : methods) {
+                UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
+                    String url = urlMapping.value();
+                    
+                        Map<String, String> urlMappingClasses = new HashMap<>();
+                        urlMappingClasses.put("url", url);
+                        urlMappingClasses.put("class", clazz.getSimpleName());
+                        urlMappingClasses.put("method", method.getName());
+                        urlMappingClassesList.add(urlMappingClasses);
+            }       
+            
+        }
+        return urlMappingClassesList;
     }
 }
