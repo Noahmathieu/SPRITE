@@ -2,6 +2,7 @@ package GetServlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -51,8 +52,34 @@ public class Getlink extends HttpServlet {
 
          if (!urlMapping.isEmpty()) {
              for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
-                         out.println("<p>Url : " + entry.getKey().getUrl()+ "   /Methode Http : " + entry.getKey().getMethod() + "   /Method : " + entry.getValue().getName() + "   /Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
+
+                 out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod()
+                         + "   /Method : " + entry.getValue().getName() + "   /Classe du Method : "
+                         + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
+                         try {
+                                Method m = entry.getValue();
+                                Class<?> clazz = m.getDeclaringClass();
+                                Object instance = clazz.getDeclaredConstructor().newInstance();
+
+                                Class<?>[] params = m.getParameterTypes();
+
+                                if (params.length == 0) {
+                                    m.invoke(instance);
+                                } else if (params.length == 2) {
+                                    m.invoke(instance, request, response);
+                                }
+
+                            } catch (NoSuchMethodException e) {
+                                out.println("<p>Constructeur introuvable</p>");
+                            } catch (InvocationTargetException e) {
+                                out.println("<p>Erreur dans la méthode : " + e.getCause().getMessage() + "</p>");
+                            } catch (IllegalAccessException e) {
+                                out.println("<p>Méthode inaccessible</p>");
+                            } catch (InstantiationException e) {
+                                out.println("<p>Impossible d'instancier la classe</p>");
+                            }
              }
+
          } else {
              List<Map<UrlMethod, Method>> urlMappingNoMatches = utilitaire.getUrlMappingNoMatchesUrl(classes);
              out.println("<p>Aucun mapping trouvé pour l'URL : " + pathInfo + "   avec la method : " + method + "</p>");
