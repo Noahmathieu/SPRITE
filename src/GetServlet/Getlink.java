@@ -2,9 +2,11 @@ package GetServlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
+import GetServlet.utils.UrlMethod;
 import GetServlet.utils.Utilitaire;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -12,7 +14,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class Getlink extends HttpServlet {
+    public List<Class<?>> classes;
     
+    
+    public void init() throws ServletException {
+        Utilitaire utilitaire = new Utilitaire();
+         this.classes = utilitaire
+                .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
+    }
+
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         requestController(request, response);
@@ -25,6 +35,8 @@ public class Getlink extends HttpServlet {
 
     public void requestController(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
+        String method = request.getMethod().toUpperCase();
         
         String pathInfo = request.getPathInfo();
         response.setContentType("text/html");
@@ -33,36 +45,25 @@ public class Getlink extends HttpServlet {
         out.println("<h1>Hello!</h1>");
         out.println("<p>Path Info : " + pathInfo + "</p>");
 
-        Utilitaire utilitaire = new Utilitaire();
-        
-        // List<Class<?>> classes = utilitaire.getClassesWithAnnotationUrlMapping(utilitaire.getAllClasses());
-        // Map<String, String> urlMapping = utilitaire.getUrlMappingClasses(classes, pathInfo);
+         UrlMethod urlMethod = new UrlMethod(pathInfo, method);
+         Utilitaire utilitaire = new Utilitaire();
+         Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
 
-        List<Class<?>> classes = utilitaire
-                .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
-         
-            Map<String, String> urlMapping = utilitaire.getUrlMappingClasses(classes, pathInfo);
-         
-        
-        
-        for (Class<?> clazz : utilitaire.getAllClasses()) {
-            out.println("<p>Classe : " + clazz.getSimpleName() + " - Package : " + clazz.getPackage().getName() + "</p>");
-        }
-        
-        if (!urlMapping.isEmpty()) {
-            for (Map.Entry<String, String> entry : urlMapping.entrySet()) {
-                out.println("<p>Classe : " + entry.getKey() + " - et : " + entry.getValue() + "</p>");
-            }
-        } else {
-            List<Map<String, String>> urlMappingNoMatches = utilitaire.getUrlMappingNoMatchesUrl(classes);
-            out.println("<p>Aucun mapping trouvé pour l'URL : " + pathInfo + "</p>");
-                out.println("<p>Voici les mappings disponibles :</p>");
-                for (Map<String, String> mapping : urlMappingNoMatches) {
-                    for (Map.Entry<String, String> entry : mapping.entrySet()) {
-                        out.println("<p>Classe : " + entry.getKey() + " - et : " + entry.getValue() + "</p>");
-                }
-            }
-        }
+         if (!urlMapping.isEmpty()) {
+             for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
+                         out.println("<p>Url : " + entry.getKey().getUrl()+ "   /Methode Http : " + entry.getKey().getMethod() + "   /Method : " + entry.getValue().getName() + "   /Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
+             }
+         } else {
+             List<Map<UrlMethod, Method>> urlMappingNoMatches = utilitaire.getUrlMappingNoMatchesUrl(classes);
+             out.println("<p>Aucun mapping trouvé pour l'URL : " + pathInfo + "   avec la method : " + method + "</p>");
+                 out.println("<p>Voici les mappings disponibles :</p>");
+                 for (Map<UrlMethod, Method> mapping : urlMappingNoMatches) {
+                     for (Map.Entry<UrlMethod, Method> entry : mapping.entrySet()) {
+                         out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod() + "   / Method : " + entry.getValue().getName() + "   /Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
+                 }
+             }
+         }
+                 
         out.println("</body></html>");
     }
    
@@ -91,3 +92,8 @@ public class Getlink extends HttpServlet {
     // }
     //     out.println("</body></html>");
     // }
+            // List<Class<?>> classes = utilitaire.getClassesWithAnnotationUrlMapping(utilitaire.getAllClasses());
+        // Map<String, String> urlMapping = utilitaire.getUrlMappingClasses(classes, pathInfo);
+        // for (Class<?> clazz : utilitaire.getAllClasses()) {
+        //                 out.println("<p>Url : " + entry.getKey() + " Method : " + entry.getValue().getName() + " Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
+        // }
