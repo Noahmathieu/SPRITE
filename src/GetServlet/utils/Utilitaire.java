@@ -66,18 +66,21 @@ public class Utilitaire {
     //     return listClasses;
     // }
 
-    public Map<String, String> getUrlMappingClasses(List<Class<?>> listClasseWithAnnotation, String urlMap) {
-        Map<String, String> urlMappingClasses = new HashMap<>();
+
+    public Map<UrlMethod, Method> getUrlMappingClasses(List<Class<?>> listClasseWithAnnotation, UrlMethod urlMethod) {
+        Map<UrlMethod, Method> urlMappingClasses = new HashMap<>();
         for (Class<?> clazz : listClasseWithAnnotation) {
             Method[] methods = clazz.getDeclaredMethods();
 
             for (Method method : methods) {
                 UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
+                if (urlMapping == null) {
+                    continue;
+                }
                 String url = urlMapping.value();
-                if (url.equals(urlMap)) {
-                    urlMappingClasses.put("url", url);
-                    urlMappingClasses.put("class", clazz.getSimpleName());
-                    urlMappingClasses.put("method", method.getName());
+                if (urlMethod.equals(new UrlMethod(url, urlMapping.method()))) {
+                    urlMappingClasses.put(urlMethod, method);
+                    break;
                 }
             }
 
@@ -85,19 +88,20 @@ public class Utilitaire {
         return urlMappingClasses;
     }
     
-    public List<Map<String, String>> getUrlMappingNoMatchesUrl(List<Class<?>> listClasseWithAnnotation) {
-        List<Map<String, String>> urlMappingClassesList = new ArrayList<>();
+    public List<Map<UrlMethod, Method>> getUrlMappingNoMatchesUrl(List<Class<?>> listClasseWithAnnotation) {
+        List<Map<UrlMethod, Method>> urlMappingClassesList = new ArrayList<>();
         for (Class<?> clazz : listClasseWithAnnotation) {
             Method[] methods = clazz.getDeclaredMethods();
             
             for (Method method : methods) {
                 UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
-                    String url = urlMapping.value();
+                if (urlMapping == null) {
+                    continue;
+                }
+                String url = urlMapping.value();
                     
-                        Map<String, String> urlMappingClasses = new HashMap<>();
-                        urlMappingClasses.put("url", url);
-                        urlMappingClasses.put("class", clazz.getSimpleName());
-                        urlMappingClasses.put("method", method.getName());
+                        Map<UrlMethod, Method> urlMappingClasses = new HashMap<>();
+                        urlMappingClasses.put(new UrlMethod(url, urlMapping.method()), method);
                         urlMappingClassesList.add(urlMappingClasses);
             }       
             
