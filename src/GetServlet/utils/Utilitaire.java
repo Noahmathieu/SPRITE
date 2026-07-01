@@ -67,8 +67,10 @@ public class Utilitaire {
     // }
 
 
-    public Map<UrlMethod, Method> getUrlMappingClasses(List<Class<?>> listClasseWithAnnotation, UrlMethod urlMethod) {
+    public Map<UrlMethod, Method> getUrlMappingClasses(List<Class<?>> listClasseWithAnnotation, UrlMethod urlMethod) throws Exception {
         Map<UrlMethod, Method> urlMappingClasses = new HashMap<>();
+        List<UrlMapping> urlMaps = new ArrayList<>();
+
         for (Class<?> clazz : listClasseWithAnnotation) {
             Method[] methods = clazz.getDeclaredMethods();
 
@@ -79,12 +81,16 @@ public class Utilitaire {
                 }
                 String url = urlMapping.value();
                 if (urlMethod.equals(new UrlMethod(url, urlMapping.method()))) {
+                    urlMaps.add(urlMapping);
                     urlMappingClasses.put(urlMethod, method);
-                    break;
                 }
             }
 
         }
+          if (urlMaps.size() > 1) {
+              throw new Exception("Plusieurs méthodes avec le même mapping d'URL et méthode HTTP trouvées.");
+                
+            }
         return urlMappingClasses;
     }
     
