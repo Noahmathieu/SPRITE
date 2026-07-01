@@ -9,6 +9,7 @@ import java.util.Map;
 
 import GetServlet.utils.UrlMethod;
 import GetServlet.utils.Utilitaire;
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,13 +18,17 @@ import jakarta.servlet.http.HttpServletResponse;
 public class Getlink extends HttpServlet {
     public List<Class<?>> classes;
     
-    
+      
     public void init() throws ServletException {
         Utilitaire utilitaire = new Utilitaire();
-         this.classes = utilitaire
+        this.classes = utilitaire
                 .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
-    }
+        System.out.println("Classes avec l'annotation @Controller :");
+         
 
+                
+    }
+    //mettre dans init() les fonction qui se throws(pour dire qu' il y a des url et de http methodes identiques) dans le requestController() et le mettre dans un try catch pour afficher l'erreur au lieu de son lancement sur le projet
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         requestController(request, response);
@@ -48,7 +53,9 @@ public class Getlink extends HttpServlet {
 
          UrlMethod urlMethod = new UrlMethod(pathInfo, method);
          Utilitaire utilitaire = new Utilitaire();
-         Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
+
+             try {
+                Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
 
          if (!urlMapping.isEmpty()) {
              for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
@@ -90,6 +97,9 @@ public class Getlink extends HttpServlet {
                  }
              }
          }
+          } catch (Exception e) {
+                out.println("<h1>Exception: </h1><p>Erreur lors de la récupération du mapping d'URL : " + e.getMessage() + "</p>");
+            }
                  
         out.println("</body></html>");
     }
