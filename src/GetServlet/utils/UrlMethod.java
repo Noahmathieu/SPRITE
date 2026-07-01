@@ -1,5 +1,7 @@
 package GetServlet.utils;
 
+import java.util.Objects;
+
 public class UrlMethod {
     private  String url;
     private String method;
@@ -28,6 +30,11 @@ public class UrlMethod {
     public boolean equals(Object other) {
         if (!(other instanceof UrlMethod)) return false;
         UrlMethod o = (UrlMethod) other;
-        return this.url.equals(o.url) && this.method.equals(o.method);
+        return Objects.equals(this.url, o.url) && Objects.equals(this.method, o.method);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(url, method);
     }
 }

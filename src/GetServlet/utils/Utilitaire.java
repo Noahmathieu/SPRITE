@@ -56,6 +56,29 @@ public class Utilitaire {
         return listClasses;
     }
 
+    public void validateUniqueUrlMappings(List<Class<?>> listClasseWithAnnotation) throws Exception {
+        Map<UrlMethod, Method> seenMappings = new HashMap<>();
+
+        for (Class<?> clazz : listClasseWithAnnotation) {
+            Method[] methods = clazz.getDeclaredMethods();
+
+            for (Method method : methods) {
+                UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
+                if (urlMapping == null) {
+                    continue;
+                }
+
+                UrlMethod urlMethod = new UrlMethod(urlMapping.value(), urlMapping.method());
+                Method previousMethod = seenMappings.putIfAbsent(urlMethod, method);
+
+                if (previousMethod != null) {
+                    throw new Exception("Plusieurs méthodes avec le même mapping d'URL et méthode HTTP trouvées : "
+                            + urlMethod.getUrl() + " [" + urlMethod.getMethod() + "]");
+                }
+            }
+        }
+    }
+
     // public List<Class<?>> getClassesWithAnnotationUrlMapping(List<Class<?>> listClasse) {
     //     List<Class<?>> listClasses = new ArrayList<>();
     //     for (Class<?> clazz : listClasse) {

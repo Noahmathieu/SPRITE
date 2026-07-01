@@ -6,10 +6,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import GetServlet.utils.UrlMethod;
 import GetServlet.utils.Utilitaire;
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,12 +21,14 @@ public class Getlink extends HttpServlet {
       
     public void init() throws ServletException {
         Utilitaire utilitaire = new Utilitaire();
-         this.classes = utilitaire
-                 .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
-                System.out.println("Classes avec l'annotation @Controller :");
+        this.classes = utilitaire
+                .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
+        System.out.println("Classes avec l'annotation @Controller :");
+         
+
+                
     }
-    //mettre dans init() les fonction qui se throws dans le requestController()
-//et la sprite 4 serait de juste le compiler ou executer au moment de la lancement de l' application de test
+    //mettre dans init() les fonction qui se throws(pour dire qu' il y a des url et de http methodes identiques) dans le requestController() et le mettre dans un try catch pour afficher l'erreur au lieu de son lancement sur le projet
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         requestController(request, response);
@@ -53,7 +55,7 @@ public class Getlink extends HttpServlet {
          Utilitaire utilitaire = new Utilitaire();
 
              try {
-         Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
+                Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
 
          if (!urlMapping.isEmpty()) {
              for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
