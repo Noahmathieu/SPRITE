@@ -7,6 +7,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
+import GetServlet.models.MethodAndViews;
 import GetServlet.utils.UrlMethod;
 import GetServlet.utils.Utilitaire;
 import jakarta.servlet.annotation.WebServlet;
@@ -24,11 +25,8 @@ public class Getlink extends HttpServlet {
         this.classes = utilitaire
                 .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
         System.out.println("Classes avec l'annotation @Controller :");
-         
-
                 
     }
-    //mettre dans init() les fonction qui se throws(pour dire qu' il y a des url et de http methodes identiques) dans le requestController() et le mettre dans un try catch pour afficher l'erreur au lieu de son lancement sur le projet
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         requestController(request, response);
@@ -42,71 +40,126 @@ public class Getlink extends HttpServlet {
     public void requestController(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        String prefix = "/WEB-INF/templates/";
+        String suffix = ".jsp";
         String method = request.getMethod().toUpperCase();
-        
-        String pathInfo = request.getPathInfo();
-        response.setContentType("text/html");
-        PrintWriter out = response.getWriter();
-        out.println("<html><body>");
-        out.println("<h1>Hello!</h1>");
-        out.println("<p>Path Info : " + pathInfo + "</p>");
+        String pathInfo = request.getPathInfo();//le routes controller
 
-         UrlMethod urlMethod = new UrlMethod(pathInfo, method);
-         Utilitaire utilitaire = new Utilitaire();
+        UrlMethod urlMethod = new UrlMethod(pathInfo, method);
+        Utilitaire utilitaire = new Utilitaire();
 
-             try {
-                Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
+        try {
+            Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
 
-         if (!urlMapping.isEmpty()) {
-             for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
+            if (!urlMapping.isEmpty()) {
+                for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
 
-                 out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod()
-                         + "   /Method : " + entry.getValue().getName() + "   /Classe du Method : "
-                         + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
-                         try {
-                                Method m = entry.getValue();
-                                Class<?> clazz = m.getDeclaringClass();
-                                Object instance = clazz.getDeclaredConstructor().newInstance();
+                    try {
+                        Method m = entry.getValue();
+                        Class<?> clazz = m.getDeclaringClass();
+                        Object instance = clazz.getDeclaredConstructor().newInstance();
 
-                                Class<?>[] params = m.getParameterTypes();
+                        Class<?>[] params = m.getParameterTypes();
 
-                                if (params.length == 0) {
-                                    m.invoke(instance);
-                                } else if (params.length == 2) {
-                                    m.invoke(instance, request, response);
+                        if (params.length == 0) {
+                            Object mv = m.invoke(instance);
+                            if (mv instanceof MethodAndViews) {
+                                MethodAndViews methodAndViews = (MethodAndViews) mv;
+                                String views = prefix + methodAndViews.getView() + suffix;
+                                 Map<String, Object> model = methodAndViews.getModel();
+                                for (Map.Entry<String, Object> modelEntry : model.entrySet()) {
+                                    request.setAttribute(modelEntry.getKey(), modelEntry.getValue());
                                 }
-
-                            } catch (NoSuchMethodException e) {
-                                out.println("<p>Constructeur introuvable</p>");
-                            } catch (InvocationTargetException e) {
-                                out.println("<p>Erreur dans la méthode : " + e.getCause().getMessage() + "</p>");
-                            } catch (IllegalAccessException e) {
-                                out.println("<p>Méthode inaccessible</p>");
-                            } catch (InstantiationException e) {
-                                out.println("<p>Impossible d'instancier la classe</p>");
+                                request.getRequestDispatcher(views).forward(request, response);
+                            } else {
+                                throw new Exception("La méthode " + m.getName() + " doit retourner un String représentant le nom de la vue.");
                             }
-             }
+                        } else if (params.length == 2) {
+                            m.invoke(instance, request, response);
+                        }
 
-         } else {
-             List<Map<UrlMethod, Method>> urlMappingNoMatches = utilitaire.getUrlMappingNoMatchesUrl(classes);
-             out.println("<p>Aucun mapping trouvé pour l'URL : " + pathInfo + "   avec la method : " + method + "</p>");
-                 out.println("<p>Voici les mappings disponibles :</p>");
-                 for (Map<UrlMethod, Method> mapping : urlMappingNoMatches) {
-                     for (Map.Entry<UrlMethod, Method> entry : mapping.entrySet()) {
-                         out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod() + "   / Method : " + entry.getValue().getName() + "   /Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
-                 }
-             }
-         }
-          } catch (Exception e) {
-                out.println("<h1>Exception: </h1><p>Erreur lors de la récupération du mapping d'URL : " + e.getMessage() + "</p>");
+                    } catch (NoSuchMethodException e) {
+                        System.out.println("<p>Constructeur introuvable</p>");
+                    } catch (InvocationTargetException e) {
+                        System.out.println("<p>Erreur dans la méthode : " + e.getCause().getMessage() + "</p>");
+                    } catch (IllegalAccessException e) {
+                        System.out.println("<p>Méthode inaccessible</p>");
+                    } catch (InstantiationException e) {
+                        System.out.println("<p>Impossible d'instancier la classe</p>");
+                    }
+
+                }
+            } else {
+                throw new Exception("Aucun mapping trouvé pour l'URL : " + pathInfo + "   avec la method : " + method);
             }
-                 
-        out.println("</body></html>");
+        } catch (Exception e) {
+            System.out.println("<h1>Exception: </h1><p>Erreur lors de la récupération du mapping d'URL : "
+                    + e.getMessage() + "</p>");
+        }
+
+        
     }
    
 }
 
 
+// response.setContentType("text/html");
+//         PrintWriter out = response.getWriter();
+//         out.println("<html><body>");
+//         out.println("<h1>Hello!</h1>");
+//         out.println("<p>Path Info : " + pathInfo + "</p>");
+
+//          UrlMethod urlMethod = new UrlMethod(pathInfo, method);
+//          Utilitaire utilitaire = new Utilitaire();
+
+//              try {
+//                 Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
+
+//          if (!urlMapping.isEmpty()) {
+//              for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
+
+//                  out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod()
+//                          + "   /Method : " + entry.getValue().getName() + "   /Classe du Method : "
+//                          + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
+//                          try {
+//                                 Method m = entry.getValue();
+//                                 Class<?> clazz = m.getDeclaringClass();
+//                                 Object instance = clazz.getDeclaredConstructor().newInstance();
+
+//                                 Class<?>[] params = m.getParameterTypes();
+
+//                                 if (params.length == 0) {
+//                                     m.invoke(instance);
+//                                 } else if (params.length == 2) {
+//                                     m.invoke(instance, request, response);
+//                                 }
+
+//                             } catch (NoSuchMethodException e) {
+//                                 out.println("<p>Constructeur introuvable</p>");
+//                             } catch (InvocationTargetException e) {
+//                                 out.println("<p>Erreur dans la méthode : " + e.getCause().getMessage() + "</p>");
+//                             } catch (IllegalAccessException e) {
+//                                 out.println("<p>Méthode inaccessible</p>");
+//                             } catch (InstantiationException e) {
+//                                 out.println("<p>Impossible d'instancier la classe</p>");
+//                             }
+//              }
+
+//          } else {
+//              List<Map<UrlMethod, Method>> urlMappingNoMatches = utilitaire.getUrlMappingNoMatchesUrl(classes);
+//              out.println("<p>Aucun mapping trouvé pour l'URL : " + pathInfo + "   avec la method : " + method + "</p>");
+//                  out.println("<p>Voici les mappings disponibles :</p>");
+//                  for (Map<UrlMethod, Method> mapping : urlMappingNoMatches) {
+//                      for (Map.Entry<UrlMethod, Method> entry : mapping.entrySet()) {
+//                          out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod() + "   / Method : " + entry.getValue().getName() + "   /Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
+//                  }
+//              }
+//          }
+//           } catch (Exception e) {
+//                 out.println("<h1>Exception: </h1><p>Erreur lors de la récupération du mapping d'URL : " + e.getMessage() + "</p>");
+//             }
+                 
+//         out.println("</body></html>");
  // public void requestController(HttpServletRequest request, HttpServletResponse response)
     //         throws ServletException, IOException {
     //     String packageName = request.getParameter("package");
