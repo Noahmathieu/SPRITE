@@ -18,13 +18,19 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class Getlink extends HttpServlet {
     public List<Class<?>> classes;
-    
+
+    private String suffix;
+    private String prefix;
+
       
     public void init() throws ServletException {
         Utilitaire utilitaire = new Utilitaire();
         this.classes = utilitaire
                 .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
         System.out.println("Classes avec l'annotation @Controller :");
+        this.suffix = getServletContext().getInitParameter("suffix");
+        this.prefix = getServletContext().getInitParameter("prefix");
+
                 
     }
     @Override
@@ -40,8 +46,6 @@ public class Getlink extends HttpServlet {
     public void requestController(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        String prefix = "/WEB-INF/templates/";
-        String suffix = ".jsp";
         String method = request.getMethod().toUpperCase();
         String pathInfo = request.getPathInfo();//le routes controller
 
