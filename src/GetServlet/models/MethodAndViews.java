@@ -17,11 +17,11 @@ public class MethodAndViews {
 
     public Map<String, Object> getModel() {
         return model;
-    }
-    public void setModel(Map<String, Object> model) {
-        this.model = model;
-    }
+    } 
 
+    public void setModel(String nom ,Object value){
+        model.put(nom, value);
+    }
     public void setView(String view) {
         this.view = view;
     }

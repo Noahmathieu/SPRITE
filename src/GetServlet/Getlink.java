@@ -60,7 +60,7 @@ public class Getlink extends HttpServlet {
 
                     try {
                         Method m = entry.getValue();
-                        Class<?> clazz = m.getDeclaringClass();
+                        Class<?> clazz = m.getDeclaringClass();     
                         Object instance = clazz.getDeclaredConstructor().newInstance();
 
                         Class<?>[] params = m.getParameterTypes();
