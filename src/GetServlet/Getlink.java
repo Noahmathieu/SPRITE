@@ -7,9 +7,12 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
+import GetServlet.listener.SpringBeanInjector;
 import GetServlet.models.MethodAndViews;
 import GetServlet.utils.UrlMethod;
 import GetServlet.utils.Utilitaire;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -21,17 +24,32 @@ public class Getlink extends HttpServlet {
 
     private String suffix;
     private String prefix;
+    private ApplicationContext springContext;
 
       
-    public void init() throws ServletException {
-        Utilitaire utilitaire = new Utilitaire();
-        this.classes = utilitaire
-                .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
-        System.out.println("Classes avec l'annotation @Controller :");
-        this.suffix = getServletContext().getInitParameter("suffix");
-        this.prefix = getServletContext().getInitParameter("prefix");
+public void init() throws ServletException {
+    Utilitaire utilitaire = new Utilitaire();
+    this.classes = utilitaire
+            .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
+    System.out.println("Classes avec l'annotation @Controller :");
+    this.suffix = getServletContext().getInitParameter("suffix");
+    this.prefix = getServletContext().getInitParameter("prefix");
 
-                
+    String contextConfigLocation = getServletContext().getInitParameter("contextConfigLocation");
+    if (contextConfigLocation == null || contextConfigLocation.isBlank()) {
+        contextConfigLocation = "applicationContext.xml";
+    }
+    if (contextConfigLocation.startsWith("classpath:")) {
+        contextConfigLocation = contextConfigLocation.substring("classpath:".length());
+    }
+    this.springContext = new ClassPathXmlApplicationContext(contextConfigLocation);
+}
+
+    @Override
+    public void destroy() {
+        if (this.springContext instanceof ClassPathXmlApplicationContext context) {
+            context.close();
+        }
     }
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -62,6 +80,7 @@ public class Getlink extends HttpServlet {
                         Method m = entry.getValue();
                         Class<?> clazz = m.getDeclaringClass();     
                         Object instance = clazz.getDeclaredConstructor().newInstance();
+                        SpringBeanInjector.injectDependencies(instance, springContext); 
 
                         Class<?>[] params = m.getParameterTypes();
 
