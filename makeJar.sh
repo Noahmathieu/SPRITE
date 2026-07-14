@@ -9,10 +9,12 @@ JAVA_ASSIST=".m2/org/javassist/javassist/3.21.0-GA/javassist-3.21.0-GA.jar"
 GUAVA=".m2/com/google/guava/guava/20.0/guava-20.0.jar"
 SLF4J="/usr/share/java/slf4j-api.jar"
 
+mvn -q dependency:copy-dependencies -DoutputDirectory=target/dependency
+
 mkdir -p bin
 
 echo "Compilation des fichiers Java..."
-javac -cp "$TOMCAT_LIB:$REFLECTIONS:$JAVA_ASSIST:$GUAVA:$SLF4J" -d bin $(find src -name "*.java")
+javac -cp "$TOMCAT_LIB:$REFLECTIONS:$JAVA_ASSIST:$GUAVA:$SLF4J:target/dependency/*" -d bin $(find src -name "*.java")
 
 # Si la compilation a réussi
 if [ $? -eq 0 ]; then
@@ -22,6 +24,8 @@ if [ $? -eq 0 ]; then
     # Création du JAR sans classe Main car c'est une servlet
     jar cf ../sprite.jar *
     cd ..
+
+    cp -f target/dependency/*.jar "/mnt/storage/snapd/S4/Web Dynamique/AppTEST/lib/" 2>/dev/null || true
     
     echo "Envoi de sprite.jar vers AppTEST..."
     if cp sprite.jar "/mnt/storage/snapd/S4/Web Dynamique/AppTEST/lib/"; then
