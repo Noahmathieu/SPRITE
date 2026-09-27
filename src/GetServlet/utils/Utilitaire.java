@@ -90,7 +90,8 @@ public class Utilitaire {
     // }
 
 
-    public Map<UrlMethod, Method> getUrlMappingClasses(List<Class<?>> listClasseWithAnnotation, UrlMethod urlMethod) throws Exception {
+    public Map<UrlMethod, Method> getUrlMappingClasses(List<Class<?>> listClasseWithAnnotation, UrlMethod urlMethod)
+            throws Exception {
         Map<UrlMethod, Method> urlMappingClasses = new HashMap<>();
         List<UrlMapping> urlMaps = new ArrayList<>();
 
@@ -110,11 +111,15 @@ public class Utilitaire {
             }
 
         }
-          if (urlMaps.size() > 1) {
-              throw new Exception("Plusieurs méthodes avec le même mapping d'URL et méthode HTTP trouvées.");
-                
-            }
+        if (urlMaps.size() > 1) {
+            throw new Exception("Plusieurs méthodes avec le même mapping d'URL et méthode HTTP trouvées.");
+
+        }
         return urlMappingClasses;
+    }
+
+    public String knowApiOrUrlMapping() {
+        return "UrlMapping";
     }
     
     public List<Map<UrlMethod, Method>> getUrlMappingNoMatchesUrl(List<Class<?>> listClasseWithAnnotation) {

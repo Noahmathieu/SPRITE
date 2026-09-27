@@ -11,6 +11,9 @@ import GetServlet.listener.SpringBeanInjector;
 import GetServlet.models.MethodAndViews;
 import GetServlet.utils.UrlMethod;
 import GetServlet.utils.Utilitaire;
+import GetServlet.utils.Router;
+import GetServlet.utils.RouteInfo;
+import GetServlet.utils.JsonMapper;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import jakarta.servlet.annotation.WebServlet;
@@ -25,12 +28,15 @@ public class Getlink extends HttpServlet {
     private String suffix;
     private String prefix;
     private ApplicationContext springContext;
+    private Router router;
 
       
 public void init() throws ServletException {
     Utilitaire utilitaire = new Utilitaire();
     this.classes = utilitaire
             .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
+           this.router = new Router();                     // <-- 1. CRÉER l'objet d'abord
+this.router.registerController(this.classes);   // <-- 2. PUIS l'utiliser
     System.out.println("Classes avec l'annotation @Controller :");
     this.suffix = getServletContext().getInitParameter("suffix");
     this.prefix = getServletContext().getInitParameter("prefix");
@@ -113,12 +119,43 @@ public void init() throws ServletException {
 
                 }
             } else {
+                RouteInfo routeInfo = router.findRoute(pathInfo, method);
+                
+                if (routeInfo == null) {
+                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    response.getWriter().write("Aucun mapping trouvé pour kjhcf l'URL : " + pathInfo + "   avec la method : " + method);
+                    return;
+                }
+                try{
+                    Object result;
+                    Class<?>[] paramTypes = routeInfo.getMethod().getParameterTypes();
+            
+                    if(paramTypes.length == 0){
+                        result = routeInfo.getMethod().invoke(routeInfo.getControllerInstance());
+                    } else {
+
+                        String requestBody = request.getReader().lines().reduce("", (accumulator, actual) -> accumulator + actual);
+                        JsonMapper jsonMapper = new JsonMapper();
+                        Object param = jsonMapper.fromJson(
+                                requestBody,
+                                paramTypes[0]);
+                        result = routeInfo.getMethod().invoke(routeInfo.getControllerInstance(), param);
+                    }
+                    response.setContentType("application/json");
+                    response.getWriter().write(JsonMapper.toJson(result));
+
+                } catch (Exception e) {
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    response.getWriter().write("Erreur lors de l'invocation de la methode : " + e.getMessage());
+                }
+
                 throw new Exception("Aucun mapping trouvé pour l'URL : " + pathInfo + "   avec la method : " + method);
             }
         } catch (Exception e) {
             System.out.println("<h1>Exception: </h1><p>Erreur lors de la récupération du mapping d'URL : "
                     + e.getMessage() + "</p>");
         }
+
 
         
     }
