@@ -111,7 +111,6 @@ public class Utilitaire {
 
                 String url = urlMapping.value();
 
-                // Vérification du mapping
                 if (matchUrl(url, urlMethod.getUrl())
                         && urlMapping.method().equalsIgnoreCase(urlMethod.getMethod())) {
 
@@ -124,7 +123,7 @@ public class Utilitaire {
 
         if (urlMaps.size() > 1) {
             throw new Exception(
-                "Plusieurs méthodes avec le même mapping d'URL et méthode HTTP trouvées."
+                "Plusieurs methodes avec le même mapping d'URL et méthode HTTP trouvees."
             );
         }
 
