@@ -5,6 +5,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -16,15 +19,23 @@ import java.util.regex.Pattern;
 import GetServlet.annotation.PathVariable;
 import GetServlet.annotation.RequestParam;
 import GetServlet.utils.MapFile;
+import GetServlet.utils.AppConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 
 public class ParameterResolver {
 
-    public Object[] resolve(
-            Method method,
-            HttpServletRequest request,
-            Map<String, String> pathVariables) throws Exception {
+private String getUploadDirectory(HttpServletRequest request) {
+    String dir = AppConfig.get("upload.directory");
+
+    if (dir == null || dir.isBlank()) {
+        throw new IllegalStateException(
+                "La clé 'upload.directory' est absente de application.properties.");
+    }
+    return dir;
+}
+
+    public Object[] resolve(Method method,HttpServletRequest request,Map<String, String> pathVariables) throws Exception {
 
         Parameter[] parameters = method.getParameters();
 
@@ -37,8 +48,7 @@ public class ParameterResolver {
 
             if (parameter.isAnnotationPresent(RequestParam.class)) {
 
-                RequestParam annotation =
-                        parameter.getAnnotation(RequestParam.class);
+                RequestParam annotation = parameter.getAnnotation(RequestParam.class);
 
                 String name = annotation.value();
 
@@ -54,14 +64,9 @@ public class ParameterResolver {
                     if (elementClass == MapFile.class) {
                         args[i] = resolveFileList(request, name);
                     } else if (isSimpleType(elementClass)) {
-                        args[i] = resolveList(
-                                request.getParameterValues(name),
-                                elementClass);
+                        args[i] = resolveList(request.getParameterValues(name),elementClass);
                     } else {
-                        args[i] = createAndBindObjectList(
-                                elementClass,
-                                request,
-                                name);
+                        args[i] = createAndBindObjectList( elementClass,request,name);
                     }
 
                 } else {
@@ -74,8 +79,7 @@ public class ParameterResolver {
 
             if (parameter.isAnnotationPresent(PathVariable.class)) {
 
-                PathVariable annotation =
-                        parameter.getAnnotation(PathVariable.class);
+                PathVariable annotation =parameter.getAnnotation(PathVariable.class);
 
                 String name = annotation.value();
 
@@ -87,11 +91,8 @@ public class ParameterResolver {
             }
 
             if (List.class.isAssignableFrom(type)) {
-                throw new IllegalArgumentException(
-                        "Le paramètre List de la méthode " + method.getName()
-                        + " doit être annoté avec @RequestParam(\"nom\").");
+                throw new IllegalArgumentException("Le paramètre List de la méthode " + method.getName()+ " doit être annoté avec @RequestParam(\"nom\").");
             }
-
             args[i] = createAndBindObject(type, request, "");
         }
 
@@ -104,8 +105,7 @@ public class ParameterResolver {
             HttpServletRequest request,
             String listName) throws Exception {
 
-        Pattern pattern = Pattern.compile(
-                "^" + Pattern.quote(listName) + "\\[(\\d+)\\]\\..+$");
+        Pattern pattern = Pattern.compile("^" + Pattern.quote(listName) + "\\[(\\d+)\\]\\..+$");
 
         TreeSet<Integer> indexes = new TreeSet<>();
 
@@ -128,53 +128,85 @@ public class ParameterResolver {
     }
 
 
-    private Object createAndBindObject(
-            Class<?> clazz,
-            HttpServletRequest request,
-            String prefix) throws Exception {
+   private Object createAndBindObject(Class<?> clazz,HttpServletRequest request,String prefix) throws Exception {
 
-        Object object = clazz.getDeclaredConstructor().newInstance();
+       Object object = clazz.getDeclaredConstructor().newInstance();
 
-        for (Method method : clazz.getDeclaredMethods()) {
+       for (Method method : clazz.getMethods()) { 
 
-            String methodName = method.getName();
+           String methodName = method.getName();
 
-            if (!methodName.startsWith("set")) {
-                continue;
-            }
+           if (!methodName.startsWith("set") || methodName.length() == 3) {
+               continue;
+           }
+           if (method.getParameterCount() != 1) {
+               continue;
+           }
 
-            if (method.getParameterCount() != 1) {
-                continue;
-            }
+           String propertyName = Character.toLowerCase(methodName.charAt(3))+ methodName.substring(4);
 
-            String propertyName = methodName.substring(3);
+           Class<?> parameterType = method.getParameterTypes()[0];
 
-            propertyName = Character.toLowerCase(propertyName.charAt(0))
-                    + propertyName.substring(1);
+           if (parameterType == MapFile.class) {
+               MapFile file = resolveFile(request, prefix + propertyName);
+               if (file != null) {
+                   method.invoke(object, file);
+               }
+               continue;
+           }
 
-            Class<?> parameterType = method.getParameterTypes()[0];
+           if (List.class.isAssignableFrom(parameterType)) {
+               Class<?> elementClass = getListElementClassOrNull(method.getParameters()[0]);
+               if (elementClass == null) {
+                   continue;
+               }
+               String listName = prefix + propertyName;
+               List<?> list;
+               if (elementClass == MapFile.class) {
+                   list = resolveFileList(request, listName);
+               } else if (isSimpleType(elementClass)) {
+                   list = resolveList(request.getParameterValues(listName), elementClass);
+               } else {
+                   list = createAndBindObjectList(elementClass, request, listName);
+               }
+               if (!list.isEmpty()) {
+                   method.invoke(object, list);
+               }
+               continue;
+           }
 
-            if (parameterType == MapFile.class) {
-                MapFile file = resolveFile(request, prefix + propertyName);
-                if (file != null) {
-                    method.invoke(object, file);
-                }
-                continue;
-            }
+           if (!isSimpleType(parameterType)) {
+               String nestedPrefix = prefix + propertyName + ".";
+               if (hasParametersWithPrefix(request, nestedPrefix)) {
+                   method.invoke(object, createAndBindObject(parameterType, request, nestedPrefix));
+               }
+               continue;
+           }
 
-            String value = request.getParameter(prefix + propertyName);
+           String value = request.getParameter(prefix + propertyName);
+           if (value == null || value.isEmpty()) {
+               continue;
+           }
+           method.invoke(object, convert(value, parameterType));
+       }
 
-            if (value == null) {
-                continue;
-            }
-
-            Object convertedValue = convert(value, parameterType);
-
-            method.invoke(object, convertedValue);
-        }
-
-        return object;
+       return object;
+   }
+private Class<?> getListElementClassOrNull(Parameter parameter) {
+    Type genericType = parameter.getParameterizedType();
+    if (!(genericType instanceof ParameterizedType)) {
+        return null;
     }
+    Type elementType = ((ParameterizedType) genericType).getActualTypeArguments()[0];
+    return (elementType instanceof Class<?>) ? (Class<?>) elementType : null;
+}
+    private boolean hasParametersWithPrefix(HttpServletRequest request, String prefix) {
+    Enumeration<String> names = request.getParameterNames();
+    while (names.hasMoreElements()) {
+        if (names.nextElement().startsWith(prefix)) return true;
+    }
+    return false;
+}
 
 
     private boolean isMultipart(HttpServletRequest request) {
@@ -191,13 +223,10 @@ public class ParameterResolver {
             return null;
         }
 
-        return toMapFile(request.getPart(name));
+        return toMapFile(request.getPart(name), request);
     }
 
-    private List<MapFile> resolveFileList(
-            HttpServletRequest request,
-            String name) throws Exception {
-
+    private List<MapFile> resolveFileList(HttpServletRequest request,String name) throws Exception {
         List<MapFile> result = new ArrayList<>();
 
         if (!isMultipart(request)) {
@@ -206,7 +235,7 @@ public class ParameterResolver {
 
         for (Part part : request.getParts()) {
             if (name.equals(part.getName())) {
-                MapFile file = toMapFile(part);
+                MapFile file = toMapFile(part,request);
                 if (file != null) {
                     result.add(file);
                 }
@@ -216,7 +245,7 @@ public class ParameterResolver {
         return result;
     }
 
-    private MapFile toMapFile(Part part) throws Exception {
+    private MapFile toMapFile(Part part, HttpServletRequest request) throws Exception {
 
         if (part == null) {
             return null;
@@ -228,9 +257,7 @@ public class ParameterResolver {
             return null;
         }
 
-        int slash = Math.max(
-                submitted.lastIndexOf('/'),
-                submitted.lastIndexOf('\\'));
+        int slash = Math.max(submitted.lastIndexOf('/'),submitted.lastIndexOf('\\'));
         String fileName = submitted.substring(slash + 1);
 
         String name = fileName;
@@ -246,6 +273,17 @@ public class ParameterResolver {
         try (InputStream in = part.getInputStream()) {
             content = in.readAllBytes();
         }
+        Path dir = Paths.get(getUploadDirectory(request));
+        Files.createDirectories(dir);
+
+        String fullName = extension.isEmpty() ? name : name + "." + extension;
+        Path target = dir.resolve(fullName).normalize();
+
+        if (!target.startsWith(dir.normalize())) {
+            throw new SecurityException("Nom de fichier invalide : " + fullName);
+        }
+
+    Files.write(target, content);
 
         return new MapFile(name, extension,content);
     }
@@ -260,8 +298,7 @@ public class ParameterResolver {
                     "Le type générique de la liste est absent.");
         }
 
-        Type elementType =
-                ((ParameterizedType) genericType).getActualTypeArguments()[0];
+        Type elementType =((ParameterizedType) genericType).getActualTypeArguments()[0];
 
         if (!(elementType instanceof Class<?>)) {
             throw new IllegalArgumentException(
@@ -271,14 +308,23 @@ public class ParameterResolver {
         return (Class<?>) elementType;
     }
 
-    private boolean isSimpleType(Class<?> type) {
-        return type == String.class
-                || type.isPrimitive()
-                || type == Integer.class
-                || type == Long.class
-                || type == Double.class
-                || type == Boolean.class;
-    }
+private boolean isSimpleType(Class<?> type) {
+    return type == String.class
+            || type.isPrimitive()
+            || type == Integer.class
+            || type == Long.class
+            || type == Double.class
+            || type == Float.class
+            || type == Short.class
+            || type == Byte.class
+            || type == Boolean.class
+            || type == java.math.BigDecimal.class
+            || type == java.time.LocalDate.class
+            || type == java.time.LocalDateTime.class
+            || type == java.time.LocalTime.class
+            || type == java.sql.Date.class
+            || type.isEnum();
+}
 
     private List<Object> resolveList(
             String[] values,
@@ -297,42 +343,43 @@ public class ParameterResolver {
         return result;
     }
 
-    private Object convert(
-            String value,
-            Class<?> type) {
+@SuppressWarnings({"unchecked", "rawtypes"})
+private Object convert(String value, Class<?> type) {
 
-        if (value == null) {
-            return null;
-        }
-
-        if (type == String.class) {
-            return value;
-        }
-
-        if (type == int.class
-                || type == Integer.class) {
-
-            return Integer.parseInt(value);
-        }
-
-        if (type == long.class
-                || type == Long.class) {
-
-            return Long.parseLong(value);
-        }
-
-        if (type == double.class
-                || type == Double.class) {
-
-            return Double.parseDouble(value);
-        }
-
-        if (type == boolean.class
-                || type == Boolean.class) {
-
-            return Boolean.parseBoolean(value);
-        }
-
-        return value;
+    if (value == null || (value.isEmpty() && type != String.class)) {
+        return defaultFor(type);
     }
+
+    if (type == String.class) return value;
+
+    if (type == int.class     || type == Integer.class) return Integer.parseInt(value);
+    if (type == long.class    || type == Long.class)    return Long.parseLong(value);
+    if (type == double.class  || type == Double.class)  return Double.parseDouble(value);
+    if (type == float.class   || type == Float.class)   return Float.parseFloat(value);
+    if (type == short.class   || type == Short.class)   return Short.parseShort(value);
+    if (type == byte.class    || type == Byte.class)    return Byte.parseByte(value);
+    if (type == boolean.class || type == Boolean.class) return Boolean.parseBoolean(value);
+    if (type == char.class)                             return value.charAt(0);
+
+    if (type == java.math.BigDecimal.class)    return new java.math.BigDecimal(value);
+    if (type == java.time.LocalDate.class)     return java.time.LocalDate.parse(value);
+    if (type == java.time.LocalDateTime.class) return java.time.LocalDateTime.parse(value);
+    if (type == java.time.LocalTime.class)     return java.time.LocalTime.parse(value);
+    if (type == java.sql.Date.class)           return java.sql.Date.valueOf(value);
+
+    if (type.isEnum()) return Enum.valueOf((Class<Enum>) type, value);
+
+    return value;
+}
+    private Object defaultFor(Class<?> type) {
+    if (!type.isPrimitive())   return null;
+    if (type == boolean.class) return false;
+    if (type == char.class)    return '\0';
+    if (type == byte.class)    return (byte) 0;
+    if (type == short.class)   return (short) 0;
+    if (type == int.class)     return 0;
+    if (type == long.class)    return 0L;
+    if (type == float.class)   return 0f;
+    return 0d;                 // double
+}
 }
