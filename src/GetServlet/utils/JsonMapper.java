@@ -20,12 +20,12 @@ public class JsonMapper {
             return sb.append("]").toString();
         }
 
-        // Objet "classique" -> on lit ses champs via reflection
+
         StringBuilder sb = new StringBuilder("{");
         Field[] fields = obj.getClass().getDeclaredFields();
         for (int i = 0; i < fields.length; i++) {
             Field field = fields[i];
-            field.setAccessible(true); // pour lire les champs private
+            field.setAccessible(true);
             sb.append("\"").append(field.getName()).append("\":");
             sb.append(toJson(field.get(obj)));
             if (i < fields.length - 1) sb.append(",");
@@ -33,9 +33,7 @@ public class JsonMapper {
         return sb.append("}").toString();
     }
 
-    // Version simplifiée : à compléter avec un vrai parseur JSON
     public static <T> T fromJson(String json, Class<T> clazz) {
-        // TODO: parser le JSON et remplir les champs via reflection
         throw new UnsupportedOperationException("À implémenter");
     }
 }

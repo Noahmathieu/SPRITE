@@ -23,6 +23,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.MultipartConfig;
+
+@MultipartConfig(
+    fileSizeThreshold = 1024 * 1024,     // 1 Mo en mémoire avant écriture sur disque
+    maxFileSize = 10 * 1024 * 1024,      // 10 Mo par fichier
+    maxRequestSize = 50 * 1024 * 1024    // 50 Mo par requête
+)
 
 public class Getlink extends HttpServlet {
     public List<Class<?>> classes;
