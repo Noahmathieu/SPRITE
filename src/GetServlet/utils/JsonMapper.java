@@ -11,7 +11,8 @@ public class JsonMapper {
         if (obj instanceof String) return "\"" + obj + "\"";
         if (obj instanceof Number || obj instanceof Boolean) return obj.toString();
 
-        if (obj instanceof List<?> list) {
+        if (obj instanceof List<?>) {
+            List<?> list = (List<?>) obj;
             StringBuilder sb = new StringBuilder("[");
             for (int i = 0; i < list.size(); i++) {
                 sb.append(toJson(list.get(i)));

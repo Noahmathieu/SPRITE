@@ -22,8 +22,16 @@ import GetServlet.utils.MapFile;
 import GetServlet.utils.AppConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
+import GetServlet.utils.MySession;
+import GetServlet.utils.MySessionManager;
+import jakarta.servlet.http.HttpSession;
 
 public class ParameterResolver {
+    private final MySessionManager sessionManager;
+
+public ParameterResolver(MySessionManager sessionManager) {
+    this.sessionManager = sessionManager;
+}
 
 private String getUploadDirectory(HttpServletRequest request) {
     String dir = AppConfig.get("upload.directory");
@@ -87,6 +95,17 @@ private String getUploadDirectory(HttpServletRequest request) {
 
                 args[i] = convert(value, type);
 
+                continue;
+            }
+            if (type == MySession.class) {
+
+                HttpSession httpSession = request.getSession();
+
+                String sessionId = httpSession.getId();
+
+                MySession session = sessionManager.createSession(sessionId);
+
+                args[i] = session;
                 continue;
             }
 

@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.annotation.MultipartConfig;
+import GetServlet.utils.MySessionManager;
 
 @MultipartConfig(
     fileSizeThreshold = 1024 * 1024,     // 1 Mo en mémoire avant écriture sur disque
@@ -38,28 +39,45 @@ public class Getlink extends HttpServlet {
     private String prefix;
     private ApplicationContext springContext;
     private Router router;
+    private MySessionManager sessionManager;
 
       
+@Override
 public void init() throws ServletException {
     Utilitaire utilitaire = new Utilitaire();
-    this.classes = utilitaire
-            .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
-           this.router = new Router();                     // <-- 1. CRÉER l'objet d'abord
-this.router.registerController(this.classes);   // <-- 2. PUIS l'utiliser
+
+    this.classes = utilitaire.getClassesWithAnnotationController(
+        utilitaire.getAllClassesByPackageName("itu")
+    );
+
+    this.router = new Router();
+    this.router.registerController(this.classes);
+
     System.out.println("Classes avec l'annotation @Controller :");
+
     this.suffix = getServletContext().getInitParameter("suffix");
     this.prefix = getServletContext().getInitParameter("prefix");
 
-    String contextConfigLocation = getServletContext().getInitParameter("contextConfigLocation");
+    String contextConfigLocation =
+        getServletContext().getInitParameter("contextConfigLocation");
+
     if (contextConfigLocation == null || contextConfigLocation.isBlank()) {
         contextConfigLocation = "applicationContext.xml";
     }
-    if (contextConfigLocation.startsWith("classpath:")) {
-        contextConfigLocation = contextConfigLocation.substring("classpath:".length());
-    }
-    this.springContext = new ClassPathXmlApplicationContext(contextConfigLocation);
-}
 
+    if (contextConfigLocation.startsWith("classpath:")) {
+        contextConfigLocation =
+            contextConfigLocation.substring("classpath:".length());
+    }
+
+    // 1. Initialiser d'abord le contexte Spring
+    this.springContext =
+        new ClassPathXmlApplicationContext(contextConfigLocation);
+
+    // 2. Récupérer ensuite MySessionManager depuis Spring
+    this.sessionManager =
+        this.springContext.getBean(MySessionManager.class);
+}
     @Override
     public void destroy() {
         if (this.springContext instanceof ClassPathXmlApplicationContext context) {
@@ -117,7 +135,7 @@ this.router.registerController(this.classes);   // <-- 2. PUIS l'utiliser
                             "Path variables = " + pathVariables
                     );
 
-                    ParameterResolver resolver = new ParameterResolver();
+                    ParameterResolver resolver = new ParameterResolver(sessionManager);
 
                     Object[] args =resolver.resolve(m, request, pathVariables);
                     Object result = m.invoke(instance, args);
@@ -263,7 +281,6 @@ this.router.registerController(this.classes);   // <-- 2. PUIS l'utiliser
     }
 }
 }
-
 
 // response.setContentType("text/html");
 //         PrintWriter out = response.getWriter();
