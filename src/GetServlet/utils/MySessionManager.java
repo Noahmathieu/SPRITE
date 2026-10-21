@@ -1,22 +1,22 @@
-package GetServlet.utils;
+// package GetServlet.utils;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+// import java.util.concurrent.ConcurrentHashMap;
+// import java.util.concurrent.ConcurrentMap;
 
-public class MySessionManager {
+// public class MySessionManager {
 
-    private final ConcurrentMap<String, MySession> sessions =
-            new ConcurrentHashMap<>();
+//     private final ConcurrentMap<String, MySession> sessions =
+//             new ConcurrentHashMap<>();
 
-    public MySession getSession(String id) {
-        return sessions.get(id);
-    }
+//     public MySession getSession(String id) {
+//         return sessions.get(id);
+//     }
 
-    public MySession createSession(String id) {
-        return sessions.computeIfAbsent(id, MySession::new);
-    }
+//     public MySession createSession(String id) {
+//         return sessions.computeIfAbsent(id, MySession::new);
+//     }
 
-    public void removeSession(String id) {
-        sessions.remove(id);
-    }
-}
+//     public void removeSession(String id) {
+//         sessions.remove(id);
+//     }
+// }

@@ -16,20 +16,23 @@ import GetServlet.utils.Router;
 import GetServlet.utils.RouteInfo;
 import GetServlet.utils.JsonMapper;
 import GetServlet.binding.ParameterResolver;
+
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.annotation.MultipartConfig;
-import GetServlet.utils.MySessionManager;
+
+// import GetServlet.utils.MySessionManager;
 
 @MultipartConfig(
-    fileSizeThreshold = 1024 * 1024,     // 1 Mo en mémoire avant écriture sur disque
-    maxFileSize = 10 * 1024 * 1024,      // 10 Mo par fichier
-    maxRequestSize = 50 * 1024 * 1024    // 50 Mo par requête
+    fileSizeThreshold = 1024 * 1024,     
+    maxFileSize = 10 * 1024 * 1024,  
+    maxRequestSize = 50 * 1024 * 1024
 )
 
 public class Getlink extends HttpServlet {
@@ -39,7 +42,7 @@ public class Getlink extends HttpServlet {
     private String prefix;
     private ApplicationContext springContext;
     private Router router;
-    private MySessionManager sessionManager;
+    // private MySessionManager sessionManager;
 
       
 @Override
@@ -70,13 +73,10 @@ public void init() throws ServletException {
             contextConfigLocation.substring("classpath:".length());
     }
 
-    // 1. Initialiser d'abord le contexte Spring
     this.springContext =
         new ClassPathXmlApplicationContext(contextConfigLocation);
-
-    // 2. Récupérer ensuite MySessionManager depuis Spring
-    this.sessionManager =
-        this.springContext.getBean(MySessionManager.class);
+    // this.sessionManager =
+    //     this.springContext.getBean(MySessionManager.class);
 }
     @Override
     public void destroy() {
@@ -135,7 +135,7 @@ public void init() throws ServletException {
                             "Path variables = " + pathVariables
                     );
 
-                    ParameterResolver resolver = new ParameterResolver(sessionManager);
+                    ParameterResolver resolver = new ParameterResolver();
 
                     Object[] args =resolver.resolve(m, request, pathVariables);
                     Object result = m.invoke(instance, args);
