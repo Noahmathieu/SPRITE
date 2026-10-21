@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +23,16 @@ import GetServlet.utils.MapFile;
 import GetServlet.utils.AppConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
+import GetServlet.utils.MySession;
+// import GetServlet.utils.MySessionManager;
+import jakarta.servlet.http.HttpSession;
 
 public class ParameterResolver {
+    // private final MySessionManager sessionManager;
+
+// public ParameterResolver(MySessionManager sessionManager) {
+//     this.sessionManager = sessionManager;
+// }
 
 private String getUploadDirectory(HttpServletRequest request) {
     String dir = AppConfig.get("upload.directory");
@@ -89,7 +98,27 @@ private String getUploadDirectory(HttpServletRequest request) {
 
                 continue;
             }
+            if (type == MySession.class) {
+                        Map<String, MySession> session =
+                                (Map<String, MySession>) request.getServletContext().getAttribute("session");
+                        if (session == null) {
+                            session = new ConcurrentHashMap<>();
+                            request.getServletContext().setAttribute("session", session);
+                        }
 
+                        HttpSession httpSession = request.getSession(true);
+                        String idSession = httpSession.getId();
+                        MySession mysession;
+                        if (session.containsKey(idSession)) {
+                            mysession = session.get(idSession);
+                        } else {
+                            mysession = new MySession(httpSession);
+                            session.put(idSession, mysession);
+                        }
+                        args[i] = mysession;
+                        continue;
+        
+            }
             if (List.class.isAssignableFrom(type)) {
                 throw new IllegalArgumentException("Le paramètre List de la méthode " + method.getName()+ " doit être annoté avec @RequestParam(\"nom\").");
             }

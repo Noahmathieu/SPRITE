@@ -16,8 +16,10 @@ import GetServlet.utils.Router;
 import GetServlet.utils.RouteInfo;
 import GetServlet.utils.JsonMapper;
 import GetServlet.binding.ParameterResolver;
+
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -25,10 +27,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.annotation.MultipartConfig;
 
+// import GetServlet.utils.MySessionManager;
+
 @MultipartConfig(
-    fileSizeThreshold = 1024 * 1024,     // 1 Mo en mémoire avant écriture sur disque
-    maxFileSize = 10 * 1024 * 1024,      // 10 Mo par fichier
-    maxRequestSize = 50 * 1024 * 1024    // 50 Mo par requête
+    fileSizeThreshold = 1024 * 1024,     
+    maxFileSize = 10 * 1024 * 1024,  
+    maxRequestSize = 50 * 1024 * 1024
 )
 
 public class Getlink extends HttpServlet {
@@ -38,28 +42,42 @@ public class Getlink extends HttpServlet {
     private String prefix;
     private ApplicationContext springContext;
     private Router router;
+    // private MySessionManager sessionManager;
 
       
+@Override
 public void init() throws ServletException {
     Utilitaire utilitaire = new Utilitaire();
-    this.classes = utilitaire
-            .getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
-           this.router = new Router();                     // <-- 1. CRÉER l'objet d'abord
-this.router.registerController(this.classes);   // <-- 2. PUIS l'utiliser
+
+    this.classes = utilitaire.getClassesWithAnnotationController(
+        utilitaire.getAllClassesByPackageName("itu")
+    );
+
+    this.router = new Router();
+    this.router.registerController(this.classes);
+
     System.out.println("Classes avec l'annotation @Controller :");
+
     this.suffix = getServletContext().getInitParameter("suffix");
     this.prefix = getServletContext().getInitParameter("prefix");
 
-    String contextConfigLocation = getServletContext().getInitParameter("contextConfigLocation");
+    String contextConfigLocation =
+        getServletContext().getInitParameter("contextConfigLocation");
+
     if (contextConfigLocation == null || contextConfigLocation.isBlank()) {
         contextConfigLocation = "applicationContext.xml";
     }
-    if (contextConfigLocation.startsWith("classpath:")) {
-        contextConfigLocation = contextConfigLocation.substring("classpath:".length());
-    }
-    this.springContext = new ClassPathXmlApplicationContext(contextConfigLocation);
-}
 
+    if (contextConfigLocation.startsWith("classpath:")) {
+        contextConfigLocation =
+            contextConfigLocation.substring("classpath:".length());
+    }
+
+    this.springContext =
+        new ClassPathXmlApplicationContext(contextConfigLocation);
+    // this.sessionManager =
+    //     this.springContext.getBean(MySessionManager.class);
+}
     @Override
     public void destroy() {
         if (this.springContext instanceof ClassPathXmlApplicationContext context) {
@@ -263,7 +281,6 @@ this.router.registerController(this.classes);   // <-- 2. PUIS l'utiliser
     }
 }
 }
-
 
 // response.setContentType("text/html");
 //         PrintWriter out = response.getWriter();
