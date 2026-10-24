@@ -12,9 +12,11 @@ import GetServlet.models.MethodAndViews;
 import GetServlet.utils.UrlMethod;
 import GetServlet.utils.Utilitaire;
 import GetServlet.annotation.UrlMapping;
+import GetServlet.annotation.ApiRest;
 import GetServlet.utils.Router;
 import GetServlet.utils.RouteInfo;
 import GetServlet.utils.JsonMapper;
+import GetServlet.utils.AuthSessionConfig;
 import GetServlet.binding.ParameterResolver;
 
 import org.springframework.context.ApplicationContext;
@@ -42,8 +44,6 @@ public class Getlink extends HttpServlet {
     private String prefix;
     private ApplicationContext springContext;
     private Router router;
-    // private MySessionManager sessionManager;
-
       
 @Override
 public void init() throws ServletException {
@@ -74,9 +74,7 @@ public void init() throws ServletException {
     }
 
     this.springContext =
-        new ClassPathXmlApplicationContext(contextConfigLocation);
-    // this.sessionManager =
-    //     this.springContext.getBean(MySessionManager.class);
+            new ClassPathXmlApplicationContext(contextConfigLocation);
 }
     @Override
     public void destroy() {
@@ -117,28 +115,37 @@ public void init() throws ServletException {
                 try {
 
                     Method m = entry.getValue();
-
                     Class<?> clazz = m.getDeclaringClass();
-
                     UrlMapping mapping =m.getAnnotation(UrlMapping.class);
 
                     String urlPattern = mapping.value();
-
                     Object instance =clazz.getDeclaredConstructor().newInstance();
-
-                    SpringBeanInjector.injectDependencies(instance,springContext
-                    );
+                    SpringBeanInjector.injectDependencies(instance,springContext);
 
                     Map<String, String> pathVariables = utilitaire.extractPathVariables( urlPattern,pathInfo);
-
                     System.out.println(
                             "Path variables = " + pathVariables
                     );
 
                     ParameterResolver resolver = new ParameterResolver();
+                    AuthSessionConfig authSessionConfig = new AuthSessionConfig();
+                    if (!authSessionConfig.checkAuthSession(
+                            m,
+                            request,
+                            response
+                    )) {
+                        return;
+                    }
+
 
                     Object[] args =resolver.resolve(m, request, pathVariables);
                     Object result = m.invoke(instance, args);
+
+                    if (m.isAnnotationPresent(ApiRest.class)) {
+                        response.setContentType("application/json");
+                        response.getWriter().write(JsonMapper.toJson(result));
+                        return;
+                    }
 
                     if (result instanceof MethodAndViews) {
 
@@ -148,8 +155,7 @@ public void init() throws ServletException {
 
                         Map<String, Object> model = methodAndViews.getModel();
 
-                        for (Map.Entry<String, Object> modelEntry :
-                                model.entrySet()) {
+                        for (Map.Entry<String, Object> modelEntry : model.entrySet()) {
 
                             request.setAttribute(
                                     modelEntry.getKey(),
@@ -191,14 +197,11 @@ public void init() throws ServletException {
         }
 
 
-        RouteInfo routeInfo =
-                router.findRoute(pathInfo, method);
+        RouteInfo routeInfo = router.findRoute(pathInfo, method);
 
         if (routeInfo == null) {
 
-            response.setStatus(
-                    HttpServletResponse.SC_NOT_FOUND
-            );
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 
             response.getWriter().write(
                     "Aucun mapping trouvé pour l'URL : "
@@ -214,42 +217,21 @@ public void init() throws ServletException {
 
             Object result;
 
-            Class<?>[] paramTypes =
-                    routeInfo.getMethod().getParameterTypes();
+            Class<?>[] paramTypes =routeInfo.getMethod().getParameterTypes();
 
             if (paramTypes.length == 0) {
-
-                result =
-                        routeInfo.getMethod().invoke(
-                                routeInfo.getControllerInstance()
-                        );
-
+                result =routeInfo.getMethod().invoke(routeInfo.getControllerInstance());
             }
             else {
+                
 
-                String requestBody =
-                        request.getReader()
-                               .lines()
-                               .reduce(
-                                       "",
-                                       (accumulator, actual) ->
-                                               accumulator + actual
-                               );
+                String requestBody =request.getReader().lines().reduce("",(accumulator, actual) ->accumulator + actual);
 
-                JsonMapper jsonMapper =
-                        new JsonMapper();
+                JsonMapper jsonMapper = new JsonMapper();
 
-                Object param =
-                        jsonMapper.fromJson(
-                                requestBody,
-                                paramTypes[0]
-                        );
+                Object param = jsonMapper.fromJson(requestBody,paramTypes[0]);
 
-                result =
-                        routeInfo.getMethod().invoke(
-                                routeInfo.getControllerInstance(),
-                                param
-                        );
+                result = routeInfo.getMethod().invoke(routeInfo.getControllerInstance(),param);
             }
 
             response.setContentType(
@@ -281,88 +263,3 @@ public void init() throws ServletException {
     }
 }
 }
-
-// response.setContentType("text/html");
-//         PrintWriter out = response.getWriter();
-//         out.println("<html><body>");
-//         out.println("<h1>Hello!</h1>");
-//         out.println("<p>Path Info : " + pathInfo + "</p>");
-
-//          UrlMethod urlMethod = new UrlMethod(pathInfo, method);
-//          Utilitaire utilitaire = new Utilitaire();
-
-//              try {
-//                 Map<UrlMethod, Method> urlMapping = utilitaire.getUrlMappingClasses(classes, urlMethod);
-
-//          if (!urlMapping.isEmpty()) {
-//              for (Map.Entry<UrlMethod, Method> entry : urlMapping.entrySet()) {
-
-//                  out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod()
-//                          + "   /Method : " + entry.getValue().getName() + "   /Classe du Method : "
-//                          + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
-//                          try {
-//                                 Method m = entry.getValue();
-//                                 Class<?> clazz = m.getDeclaringClass();
-//                                 Object instance = clazz.getDeclaredConstructor().newInstance();
-
-//                                 Class<?>[] params = m.getParameterTypes();
-
-//                                 if (params.length == 0) {
-//                                     m.invoke(instance);
-//                                 } else if (params.length == 2) {
-//                                     m.invoke(instance, request, response);
-//                                 }
-
-//                             } catch (NoSuchMethodException e) {
-//                                 out.println("<p>Constructeur introuvable</p>");
-//                             } catch (InvocationTargetException e) {
-//                                 out.println("<p>Erreur dans la méthode : " + e.getCause().getMessage() + "</p>");
-//                             } catch (IllegalAccessException e) {
-//                                 out.println("<p>Méthode inaccessible</p>");
-//                             } catch (InstantiationException e) {
-//                                 out.println("<p>Impossible d'instancier la classe</p>");
-//                             }
-//              }
-
-//          } else {
-//              List<Map<UrlMethod, Method>> urlMappingNoMatches = utilitaire.getUrlMappingNoMatchesUrl(classes);
-//              out.println("<p>Aucun mapping trouvé pour l'URL : " + pathInfo + "   avec la method : " + method + "</p>");
-//                  out.println("<p>Voici les mappings disponibles :</p>");
-//                  for (Map<UrlMethod, Method> mapping : urlMappingNoMatches) {
-//                      for (Map.Entry<UrlMethod, Method> entry : mapping.entrySet()) {
-//                          out.println("<p>Url : " + entry.getKey().getUrl() + "   /Methode Http : " + entry.getKey().getMethod() + "   / Method : " + entry.getValue().getName() + "   /Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
-//                  }
-//              }
-//          }
-//           } catch (Exception e) {
-//                 out.println("<h1>Exception: </h1><p>Erreur lors de la récupération du mapping d'URL : " + e.getMessage() + "</p>");
-//             }
-                 
-//         out.println("</body></html>");
- // public void requestController(HttpServletRequest request, HttpServletResponse response)
-    //         throws ServletException, IOException {
-    //     String packageName = request.getParameter("package");
-    //     response.setContentType("text/html");
-    //     PrintWriter out = response.getWriter();
-    //     out.println("<html><body>");
-    //     out.println("<h1>Hello!</h1>");
-    //     if (packageName == null || packageName.isEmpty()) {
-    //         out.println("<p>Veuillez fournir un nom de package en paramètre.</p>");
-    //         out.println("</body></html>");
-    //         return;
-    //     } else {
-    //         out.println("<p>Nom du package : " + packageName + "</p>");
-    //     Utilitaire utilitaire = new Utilitaire();
-    //     List<Class<?>> classes = utilitaire.getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName(packageName));
-        
-    //     for (Class<?> clazz : classes) {
-    //         out.println("<p>Classe : " + clazz.getSimpleName() + " - Package : " + clazz.getPackage().getName() + "</p>");
-    //     }
-    // }
-    //     out.println("</body></html>");
-    // }
-            // List<Class<?>> classes = utilitaire.getClassesWithAnnotationUrlMapping(utilitaire.getAllClasses());
-        // Map<String, String> urlMapping = utilitaire.getUrlMappingClasses(classes, pathInfo);
-        // for (Class<?> clazz : utilitaire.getAllClasses()) {
-        //                 out.println("<p>Url : " + entry.getKey() + " Method : " + entry.getValue().getName() + " Classe du Method : " + entry.getValue().getDeclaringClass().getSimpleName() + "</p>");
-        // }
