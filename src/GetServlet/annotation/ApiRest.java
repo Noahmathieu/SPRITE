@@ -7,6 +7,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface ApiRest {
-    String path();
+    String path() default "";
     String method() default "GET";
 }

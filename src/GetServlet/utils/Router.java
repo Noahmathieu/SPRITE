@@ -21,6 +21,10 @@ public class Router {
                 if (method.isAnnotationPresent(ApiRest.class)) {
                     ApiRest annotation = method.getAnnotation(ApiRest.class);
 
+                    if (annotation.path() == null || annotation.path().isBlank()) {
+                        continue;
+                    }
+
                     UrlMethod key = new UrlMethod(annotation.path(), annotation.method());
                     RouteInfo value = new RouteInfo(controllerInstance, method);
 

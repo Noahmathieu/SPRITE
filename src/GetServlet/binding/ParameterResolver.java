@@ -28,10 +28,9 @@ import GetServlet.utils.MySession;
 import jakarta.servlet.http.HttpSession;
 
 public class ParameterResolver {
-    // private final MySessionManager sessionManager;
 
-// public ParameterResolver(MySessionManager sessionManager) {
-//     this.sessionManager = sessionManager;
+// public ParameterResolver(String sessionAttributeName) {
+//     this.sessionAttributeName = sessionAttributeName;
 // }
 
 private String getUploadDirectory(HttpServletRequest request) {
@@ -99,8 +98,7 @@ private String getUploadDirectory(HttpServletRequest request) {
                 continue;
             }
             if (type == MySession.class) {
-                        Map<String, MySession> session =
-                                (Map<String, MySession>) request.getServletContext().getAttribute("session");
+                        Map<String, MySession> session =(Map<String, MySession>) request.getServletContext().getAttribute("session");
                         if (session == null) {
                             session = new ConcurrentHashMap<>();
                             request.getServletContext().setAttribute("session", session);

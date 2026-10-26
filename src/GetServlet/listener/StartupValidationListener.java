@@ -17,6 +17,7 @@ public class StartupValidationListener implements ServletContextListener {
     public void contextInitialized(ServletContextEvent sce) {
         Map<String, MySession> sessions = new ConcurrentHashMap<>();
         sce.getServletContext().setAttribute("session", sessions);
+        sce.getServletContext().setAttribute("auth", sce.getServletContext().getInitParameter("session.auth"));
 
         Utilitaire utilitaire = new Utilitaire();
         try {
