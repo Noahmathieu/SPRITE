@@ -129,11 +129,7 @@ public void init() throws ServletException {
 
                     ParameterResolver resolver = new ParameterResolver();
                     AuthSessionConfig authSessionConfig = new AuthSessionConfig();
-                    if (!authSessionConfig.checkAuthSession(
-                            m,
-                            request,
-                            response
-                    )) {
+                    if (!authSessionConfig.checkAuthSession(m,request,response)) {
                         return;
                     }
 
