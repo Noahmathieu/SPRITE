@@ -17,6 +17,7 @@ import GetServlet.utils.Router;
 import GetServlet.utils.RouteInfo;
 import GetServlet.utils.JsonMapper;
 import GetServlet.utils.AuthSessionConfig;
+import GetServlet.utils.ControllerRegistry;
 import GetServlet.binding.ParameterResolver;
 
 import org.springframework.context.ApplicationContext;
@@ -44,38 +45,44 @@ public class Getlink extends HttpServlet {
     private String prefix;
     private ApplicationContext springContext;
     private Router router;
+    private ControllerRegistry controllerRegistry;
       
 @Override
 public void init() throws ServletException {
-    Utilitaire utilitaire = new Utilitaire();
-
-    this.classes = utilitaire.getClassesWithAnnotationController(
-        utilitaire.getAllClassesByPackageName("itu")
-    );
-
-    this.router = new Router();
-    this.router.registerController(this.classes);
-
-    System.out.println("Classes avec l'annotation @Controller :");
-
-    this.suffix = getServletContext().getInitParameter("suffix");
-    this.prefix = getServletContext().getInitParameter("prefix");
-
-    String contextConfigLocation =
-        getServletContext().getInitParameter("contextConfigLocation");
+        String contextConfigLocation = getServletContext().getInitParameter("contextConfigLocation");
 
     if (contextConfigLocation == null || contextConfigLocation.isBlank()) {
         contextConfigLocation = "applicationContext.xml";
     }
 
     if (contextConfigLocation.startsWith("classpath:")) {
-        contextConfigLocation =
-            contextConfigLocation.substring("classpath:".length());
+        contextConfigLocation = contextConfigLocation.substring("classpath:".length());
     }
 
-    this.springContext =
-            new ClassPathXmlApplicationContext(contextConfigLocation);
-}
+    Utilitaire utilitaire = new Utilitaire();
+    this.classes = utilitaire.getClassesWithAnnotationController(utilitaire.getAllClassesByPackageName("itu"));
+
+    this.springContext = new ClassPathXmlApplicationContext(contextConfigLocation);
+
+    this.controllerRegistry = new ControllerRegistry();
+    try {
+        this.controllerRegistry.registerControllers(classes, springContext);
+     } catch (Exception e) {
+         e.printStackTrace();
+     }
+
+       this.router = new Router(controllerRegistry);
+        router.registerController(classes);
+
+
+    System.out.println("Classes avec l'annotation @Controller :");
+
+    this.suffix = getServletContext().getInitParameter("suffix");
+    this.prefix = getServletContext().getInitParameter("prefix");
+
+    }
+
+
     @Override
     public void destroy() {
         if (this.springContext instanceof ClassPathXmlApplicationContext context) {
@@ -115,12 +122,12 @@ public void init() throws ServletException {
                 try {
 
                     Method m = entry.getValue();
-                    Class<?> clazz = m.getDeclaringClass();
                     UrlMapping mapping =m.getAnnotation(UrlMapping.class);
 
                     String urlPattern = mapping.value();
-                    Object instance =clazz.getDeclaredConstructor().newInstance();
-                    SpringBeanInjector.injectDependencies(instance,springContext);
+                    
+                    Class<?> clazz = m.getDeclaringClass();
+                    Object instance = controllerRegistry.getController(clazz);
 
                     Map<String, String> pathVariables = utilitaire.extractPathVariables( urlPattern,pathInfo);
                     System.out.println(
